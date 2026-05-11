@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import EnigmaFrame from './EnigmaFrame';
+import { useAudio } from '../audio/AudioProvider';
 import {
   ENIGMA_OPERATION_CHOICES,
   ENIGMA_OPPONENT_CHOICES,
