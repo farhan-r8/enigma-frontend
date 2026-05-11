@@ -915,9 +915,14 @@ export default function EnigmaProtocolGame() {
   }
 
   function onTypingChange(event) {
-    const result = handleTypingChange(event.target.value);
+    const newValue = event.target.value;
+    // Deteksi apakah pemain sedang menghapus huruf (backspace)
+    const isDeleting = newValue.length < currentInput.length; 
+    
+    const result = handleTypingChange(newValue);
 
-    if (result.reason === 'case-sensitive-mismatch') {
+    // Putar audio error HANYA jika pemain mengetik huruf baru yang salah
+    if (result.reason === 'case-sensitive-mismatch' && !isDeleting) {
       setTypoCount((current) => current + 1);
       play('error');
       return;
@@ -927,7 +932,10 @@ export default function EnigmaProtocolGame() {
   function onValidatePassword() {
     const valid = validatePassword(passwordValue);
     if (valid) {
-      play('access_granted');
+      // Jeda 300 milidetik sebelum audio berbunyi
+      setTimeout(() => {
+        play('access_granted');
+      }, 300); 
     } else {
       play('error');
     }
@@ -1361,7 +1369,7 @@ export default function EnigmaProtocolGame() {
               <>
                 <div className="token-reference">
                   <p className="section-tag magenta">DECRYPTION FLOW</p>
-                  <p>Ketik kata aktif secara case-sensitive. Stage timeout kembali ke akhir antrean.</p>
+                  <p>Ketik kata aktif secara case-sensitive.</p>
                 </div>
 
                 <div className="arena-center">
