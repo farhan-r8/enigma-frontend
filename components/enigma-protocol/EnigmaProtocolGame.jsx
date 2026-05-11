@@ -911,14 +911,6 @@ export default function EnigmaProtocolGame() {
       play('type');
     }
 
-    if (gameMode === 'typing' && currentTargetWord && event.key.length === 1 && event.key !== ' ') {
-      const expectedCharacter = currentTargetWord[currentInput.length];
-      if (event.key !== expectedCharacter) {
-        setTypoCount((current) => current + 1);
-        play('error');
-      }
-    }
-
     handleTypingKeyDown(event);
   }
 

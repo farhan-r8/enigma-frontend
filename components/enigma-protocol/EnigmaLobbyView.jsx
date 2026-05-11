@@ -382,7 +382,4 @@ export default function EnigmaLobbyView() {
     </EnigmaFrame>
   );
 }
-     </section>
-    </EnigmaFrame>
-  );
-}
+     

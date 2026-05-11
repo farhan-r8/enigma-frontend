@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
 const AUDIO_MUTED_KEY = 'enigma_audio_muted_v1';
 
@@ -15,18 +15,20 @@ const AUDIO_MAP = {
   access_granted: { src: '/audio/access_granted.mp3', volume: 0.48, poolSize: 2 },
   data_reveal: { src: '/audio/data_reveal.mp3', volume: 0.18, poolSize: 1, loop: true },
   mission_success: { src: '/audio/mission_success.mp3', volume: 0.52, poolSize: 2 },
-  bgm: { src: '/audio/bgm.mp3', volume: 0.16, poolSize: 1, loop: false },
-  bgm1: { src: '/audio/bgm1.mp3', volume: 0.17, poolSize: 1, loop: false },
+  bgm: { src: '/audio/bgm.mp3', volume: 0.16, poolSize: 1, loop: true },
+  bgm1: { src: '/audio/bgm1.mp3', volume: 0.17, poolSize: 1, loop: true },
 };
 
-const AudioContextState = createContext({
+const AudioContext = createContext({
   muted: false,
   toggleMute: () => {},
   play: () => {},
   stop: () => {},
+  stopAll: () => {},
 });
 
 function createAudioPool(config) {
+  if (typeof window === 'undefined') return [];
   return Array.from({ length: config.poolSize || 1 }, () => {
     const audio = new Audio(config.src);
     audio.preload = 'auto';
@@ -38,6 +40,7 @@ function createAudioPool(config) {
 
 export function AudioProvider({ children }) {
   const [muted, setMuted] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const poolsRef = useRef({});
   const loopRef = useRef({});
   const availabilityRef = useRef({});
@@ -48,7 +51,22 @@ export function AudioProvider({ children }) {
   const lastTypePulseRef = useRef(0);
   const bgmStartedRef = useRef(false);
 
-  function ensureSynthContext() {
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const raw = window.localStorage.getItem(AUDIO_MUTED_KEY);
+      setMuted(raw === 'true');
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      window.localStorage.setItem(AUDIO_MUTED_KEY, String(muted));
+    } catch {}
+  }, [muted, mounted]);
+
+  const ensureSynthContext = useCallback(() => {
     if (typeof window === 'undefined') {
       return null;
     }
@@ -66,15 +84,15 @@ export function AudioProvider({ children }) {
     }
 
     return synthContextRef.current;
-  }
+  }, []);
 
-  function pulseSynth({
+  const pulseSynth = useCallback(({
     frequency,
     duration = 0.06,
     gainValue = 0.03,
     type = 'triangle',
     delaySeconds = 0,
-  }) {
+  }) => {
     const context = ensureSynthContext();
     if (!context) {
       return;
@@ -86,7 +104,7 @@ export function AudioProvider({ children }) {
 
     oscillator.type = type;
     oscillator.frequency.value = frequency;
-    gain.gain.value = gainValue;
+    gain.gain.setValueAtTime(gainValue, startAt);
 
     oscillator.connect(gain);
     gain.connect(context.destination);
@@ -94,17 +112,17 @@ export function AudioProvider({ children }) {
     oscillator.start(startAt);
     gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
     oscillator.stop(startAt + duration);
-  }
+  }, [ensureSynthContext]);
 
-  function stopSynthLoop(name) {
+  const stopSynthLoop = useCallback((name) => {
     const loopHandle = synthLoopRef.current[name];
     if (loopHandle) {
       window.clearInterval(loopHandle);
       delete synthLoopRef.current[name];
     }
-  }
+  }, []);
 
-  function playSynth(name) {
+  const playSynth = useCallback((name) => {
     if (muted) {
       return;
     }
@@ -172,22 +190,9 @@ export function AudioProvider({ children }) {
         pulseSynth({ frequency: 420, duration: 0.04, gainValue: 0.02, type: 'triangle' });
         break;
     }
-  }
+  }, [muted, pulseSynth]);
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(AUDIO_MUTED_KEY);
-      setMuted(raw === 'true');
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(AUDIO_MUTED_KEY, String(muted));
-    } catch {}
-  }, [muted]);
-
-  function getPool(name) {
+  const getPool = useCallback((name) => {
     if (!AUDIO_MAP[name]) {
       return [];
     }
@@ -197,25 +202,25 @@ export function AudioProvider({ children }) {
     }
 
     return poolsRef.current[name];
-  }
+  }, []);
 
-  function clearFade(name) {
+  const clearFade = useCallback((name) => {
     const fadeHandle = fadeRef.current[name];
     if (fadeHandle) {
       window.clearInterval(fadeHandle);
       delete fadeRef.current[name];
     }
-  }
+  }, []);
 
-  function clearStopDelay(name) {
+  const clearStopDelay = useCallback((name) => {
     const stopHandle = stopDelayRef.current[name];
     if (stopHandle) {
       window.clearTimeout(stopHandle);
       delete stopDelayRef.current[name];
     }
-  }
+  }, []);
 
-  function stop(name, options = {}) {
+  const stop = useCallback((name, options = {}) => {
     const { fadeMs = 0 } = options;
     stopSynthLoop(name);
     const audio = loopRef.current[name] || getPool(name)[0];
@@ -254,9 +259,18 @@ export function AudioProvider({ children }) {
       audio.currentTime = 0;
       audio.volume = AUDIO_MAP[name]?.volume ?? 1;
     } catch {}
-  }
+  }, [getPool, stopSynthLoop, clearFade, clearStopDelay]);
 
-  function play(name, options = {}) {
+  const stopAll = useCallback((options = {}) => {
+    Object.keys(AUDIO_MAP).forEach((name) => {
+      stop(name, options);
+    });
+    Object.keys(synthLoopRef.current).forEach((name) => {
+      stopSynthLoop(name);
+    });
+  }, [stop, stopSynthLoop]);
+
+  const play = useCallback((name, options = {}) => {
     if (muted || typeof window === 'undefined') {
       return;
     }
@@ -330,7 +344,7 @@ export function AudioProvider({ children }) {
     } catch {
       playSynth(name);
     }
-  }
+  }, [muted, getPool, playSynth, clearFade, clearStopDelay, stop]);
 
   useEffect(() => {
     let cancelled = false;
@@ -358,8 +372,9 @@ export function AudioProvider({ children }) {
       cancelled = true;
       Object.keys(synthLoopRef.current).forEach((name) => stopSynthLoop(name));
       Object.keys(stopDelayRef.current).forEach((name) => clearStopDelay(name));
+      Object.keys(fadeRef.current).forEach((name) => clearFade(name));
     };
-  }, []);
+  }, [stopSynthLoop, clearStopDelay, clearFade]);
 
   useEffect(() => {
     const onClick = (event) => {
@@ -375,7 +390,7 @@ export function AudioProvider({ children }) {
 
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);
-  }, [muted]);
+  }, [play]);
 
   useEffect(() => {
     const bootstrapBgm = () => {
@@ -394,17 +409,17 @@ export function AudioProvider({ children }) {
       window.removeEventListener('pointerdown', bootstrapBgm);
       window.removeEventListener('keydown', bootstrapBgm);
     };
-  }, [muted]);
+  }, [muted, play]);
 
   useEffect(() => {
     if (muted) {
       stopAll({ fadeMs: 400 });
     }
-  }, [muted]);
+  }, [muted, stopAll]);
 
-  function toggleMute() {
+  const toggleMute = useCallback(() => {
     setMuted((current) => !current);
-  }
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -414,65 +429,37 @@ export function AudioProvider({ children }) {
       stop,
       stopAll,
     }),
-    [muted],
+    [muted, toggleMute, play, stop, stopAll],
   );
 
   return (
-    <AudioContextState.Provider value={value}>
+    <AudioContext.Provider value={value}>
       {children}
-      <button
-        type="button"
-        className="audio-fab"
-        onClick={toggleMute}
-        aria-label={muted ? 'Unmute audio' : 'Mute audio'}
-        suppressHydrationWarning
-      >
-        {muted ? (
-          <span className="audio-icon audio-icon-muted">
-            <span className="audio-bar" />
-            <span className="audio-slash" />
-          </span>
-        ) : (
-          <span className="audio-icon">
-            <span className="audio-bar" />
-            <span className="audio-wave wave-a" />
-            <span className="audio-wave wave-b" />
-          </span>
-        )}
-      </button>
-    </AudioContextState.Provider>
+      {mounted && (
+        <button
+          type="button"
+          className="audio-fab"
+          onClick={toggleMute}
+          aria-label={muted ? 'Unmute audio' : 'Mute audio'}
+        >
+          {muted ? (
+            <span className="audio-icon audio-icon-muted">
+              <span className="audio-bar" />
+              <span className="audio-slash" />
+            </span>
+          ) : (
+            <span className="audio-icon">
+              <span className="audio-bar" />
+              <span className="audio-wave wave-a" />
+              <span className="audio-wave wave-b" />
+            </span>
+          )}
+        </button>
+      )}
+    </AudioContext.Provider>
   );
 }
 
 export function useAudio() {
-  return useContext(AudioContextState);
-}
-className="audio-slash" />
-          </span>
-        ) : (
-          <span className="audio-icon">
-            <span className="audio-bar" />
-            <span className="audio-wave wave-a" />
-            <span className="audio-wave wave-b" />
-          </span>
-        )}
-      </button>
-    </AudioContextState.Provider>
-  );
-}
-
-export function useAudio() {
-  return useContext(AudioContextState);
-}
-  <span className="audio-wave wave-a" />
-            <span className="audio-wave wave-b" />
-          </span>
-        )}
-      </button>
-    </AudioContextState.Provider>
-  );
-}
-
-export function useAudio() {
-  return useContext(AudioContextState);
+  return useContext(AudioContext);
 }
