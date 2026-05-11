@@ -361,11 +361,15 @@ export default function EnigmaProtocolGame() {
       stop('timeout', { fadeMs: 120 });
       stop('data_reveal');
       stop('bgm1', { fadeMs: 420 });
-      play('bgm', { fadeInMs: 700 });
+      stop('bgm', { fadeMs: 420 });
     };
-  }, [play, stop]);
+  }, [stop]);
 
   useEffect(() => {
+    if (muted) {
+      return;
+    }
+
     if (briefingAccepted && !postMatchData) {
       stop('bgm', { fadeMs: 500 });
       play('bgm1', { fadeInMs: 650 });
@@ -374,7 +378,7 @@ export default function EnigmaProtocolGame() {
 
     stop('bgm1', { fadeMs: 420 });
     play('bgm', { fadeInMs: 700 });
-  }, [briefingAccepted, postMatchData, play, stop]);
+  }, [briefingAccepted, postMatchData, play, stop, muted]);
 
   useEffect(() => {
     const nextResetVersion = roomState?.resetVersion || 0;
@@ -536,12 +540,17 @@ export default function EnigmaProtocolGame() {
       return;
     }
 
+    // Double-check: ensure we don't trigger if the timer was just reset in the same tick
+    // or if we're actually in a transition.
     clearCountdownInterval();
     timeoutWarningActiveRef.current = false;
     stop('timeout', { fadeMs: 120 });
     const rotated = timeoutCurrentStage();
     if (rotated) {
       setSystemMessage('Waktu habis. Stage dianggap selesai gagal dan lanjut ke stage berikutnya.');
+      // Important: reset timer immediately to avoid re-triggering this effect
+      // before the engine updates its stageTransitioning state.
+      setStageTimeLeft(STAGE_DURATION_SECONDS);
     }
   }, [briefingAccepted, currentStage, gameMode, matchLocked, stageTimeLeft, stageTransitioning, stop, timeoutCurrentStage]);
 
@@ -1180,7 +1189,7 @@ export default function EnigmaProtocolGame() {
   }
 
   return (
-    <EnigmaFrame hideNav className="room-game">
+    <EnigmaFrame hideNav className="room-game h-[100dvh] flex flex-col overflow-hidden">
       {!briefingAccepted ? (
         <>
           <section className="hero-shell room-header">
@@ -1376,7 +1385,7 @@ export default function EnigmaProtocolGame() {
                 </div>
 
                 <div
-                  className={`word-stream ${stageTransitioning ? 'stage-shift' : ''}`}
+                  className={`word-stream ${stageTransitioning ? 'stage-shift' : ''} overflow-y-auto overflow-x-hidden`}
                 >
                   {currentStage.englishWords.map((word, index) => {
                     const isCompleted = index < currentWordIndex;
@@ -1408,13 +1417,13 @@ export default function EnigmaProtocolGame() {
                     onChange={onTypingChange}
                     onKeyDown={onTypingKeyDown}
                     placeholder="Ketik kata aktif di sini..."
-                    className="typing-input"
+                    className="typing-input text-[16px]"
                     autoFocus
                     disabled={matchLocked}
                     autoComplete="off"
                     autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
+                    autoCapitalize="none"
+                    spellCheck="false"
                   />
                   <div className="typing-stats">
                     <span>{`Target: ${currentTargetWord || '-'}`}</span>
@@ -1488,10 +1497,11 @@ export default function EnigmaProtocolGame() {
                     value={passwordValue}
                     onChange={(event) => setPasswordValue(event.target.value.toUpperCase())}
                     placeholder="Masukkan 5 huruf kapital"
+                    className="text-[16px]"
                     autoComplete="off"
                     autoCorrect="off"
-                    autoCapitalize="characters"
-                    spellCheck={false}
+                    autoCapitalize="none"
+                    spellCheck="false"
                   />
                 </label>
 
@@ -1521,16 +1531,17 @@ export default function EnigmaProtocolGame() {
                         value={ipValue}
                         onChange={(event) => setIpValue(event.target.value)}
                         placeholder={activeOperation.targetIp}
+                        className="text-[16px]"
                         autoComplete="off"
                         autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
+                        autoCapitalize="none"
+                        spellCheck="false"
                       />
                     </label>
 
                     <div className="action-row">
-                      <button type="button" className="shell-button gradient" onClick={onValidateIp}>
-                        Validasi IP
+                      <button type="button" className="shell-button gradient p-3 md:p-4 touch-manipulation" onClick={onValidateIp}>
+                        <span className="text-sm md:text-base font-bold">Validasi IP</span>
                       </button>
                     </div>
 
@@ -1693,10 +1704,10 @@ export default function EnigmaProtocolGame() {
             <h3>{leavePrompt.title}</h3>
             <p>{leavePrompt.body}</p>
             <div className="room-modal-actions">
-              <button type="button" className="shell-button subtle room-modal-cancel" onClick={closeLeavePrompt}>
+              <button type="button" className="shell-button subtle room-modal-cancel p-3 touch-manipulation" onClick={closeLeavePrompt}>
                 Tetap di room
               </button>
-              <button type="button" className="shell-button room-modal-confirm" onClick={confirmLeavePrompt}>
+              <button type="button" className="shell-button room-modal-confirm p-3 touch-manipulation" onClick={confirmLeavePrompt}>
                 {leavePrompt.confirmLabel}
               </button>
             </div>

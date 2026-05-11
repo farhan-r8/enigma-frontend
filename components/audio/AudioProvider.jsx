@@ -398,27 +398,12 @@ export function AudioProvider({ children }) {
 
   useEffect(() => {
     if (muted) {
-      stop('bgm');
-      stop('bgm1');
-      return;
-    }
-
-    if (bgmStartedRef.current) {
-      play('bgm', { fadeInMs: 700 });
+      stopAll({ fadeMs: 400 });
     }
   }, [muted]);
 
   function toggleMute() {
-    setMuted((current) => {
-      const next = !current;
-      if (next) {
-        Object.keys(loopRef.current).forEach((key) => stop(key));
-        Object.keys(synthLoopRef.current).forEach((key) => stopSynthLoop(key));
-      } else if (bgmStartedRef.current) {
-        play('bgm', { fadeInMs: 700 });
-      }
-      return next;
-    });
+    setMuted((current) => !current);
   }
 
   const value = useMemo(
@@ -427,6 +412,7 @@ export function AudioProvider({ children }) {
       toggleMute,
       play,
       stop,
+      stopAll,
     }),
     [muted],
   );
@@ -450,6 +436,35 @@ export function AudioProvider({ children }) {
           <span className="audio-icon">
             <span className="audio-bar" />
             <span className="audio-wave wave-a" />
+            <span className="audio-wave wave-b" />
+          </span>
+        )}
+      </button>
+    </AudioContextState.Provider>
+  );
+}
+
+export function useAudio() {
+  return useContext(AudioContextState);
+}
+className="audio-slash" />
+          </span>
+        ) : (
+          <span className="audio-icon">
+            <span className="audio-bar" />
+            <span className="audio-wave wave-a" />
+            <span className="audio-wave wave-b" />
+          </span>
+        )}
+      </button>
+    </AudioContextState.Provider>
+  );
+}
+
+export function useAudio() {
+  return useContext(AudioContextState);
+}
+  <span className="audio-wave wave-a" />
             <span className="audio-wave wave-b" />
           </span>
         )}

@@ -18,7 +18,7 @@ export default function EnigmaFrame({ activeKey, children, hideNav = false, clas
   }, []);
 
   return (
-    <main className={`page-shell ${className}`}>
+    <main className={`page-shell min-h-[100dvh] ${className}`}>
       <div className="bg-glow bg-glow-left" />
       <div className="bg-glow bg-glow-right" />
       {!hideNav ? (

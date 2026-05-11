@@ -230,21 +230,21 @@ export default function EnigmaLandingPage() {
               <span className="type-caret" aria-hidden="true" />
             </span>
           </h1>
-          <p className="landing-subtitle">Adu kecepatan mengetik melawan player lain</p>
+          <p className="landing-subtitle text-sm md:text-base">Adu kecepatan mengetik melawan player lain</p>
 
           <div className="landing-feature-grid">
             {LANDING_FEATURES.map((feature) => (
-              <div key={feature.label} className="landing-feature-card">
+              <div key={feature.label} className="landing-feature-card p-3 md:p-4">
                 <FeatureIcon type={feature.icon} />
-                <span>{feature.label}</span>
+                <span className="text-xs md:text-sm">{feature.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <section className="landing-card">
+        <section className="landing-card p-5 md:p-8">
           <label className="landing-form-field">
-            <span>Agent Name</span>
+            <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400">Agent Name</span>
             <input
               type="text"
               value={codename}
@@ -254,19 +254,23 @@ export default function EnigmaLandingPage() {
               }}
               placeholder="Masukkan nama kamu"
               autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck="false"
+              className="text-[16px]"
               suppressHydrationWarning
             />
-            {errorMessage ? <small>{errorMessage}</small> : null}
+            {errorMessage ? <small className="text-red-400 text-xs mt-1">{errorMessage}</small> : null}
           </label>
 
           <button
             type="button"
-            className="landing-button"
+            className="landing-button p-4 touch-manipulation"
             onClick={initializeConnection}
             suppressHydrationWarning
           >
             <span className="landing-play-icon" aria-hidden="true" />
-            Mulai Bermain
+            <span className="text-sm md:text-base font-bold">Mulai Bermain</span>
           </button>
 
           <div className="landing-card-footer">

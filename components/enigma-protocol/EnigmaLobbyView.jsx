@@ -38,6 +38,14 @@ export default function EnigmaLobbyView() {
   const [onlinePlayers, setOnlinePlayers] = useState(null);
   const [roomPanelOpen, setRoomPanelOpen] = useState(false);
   const [setupTab, setSetupTab] = useState('create');
+  const { play, stop, muted } = useAudio();
+
+  useEffect(() => {
+    if (!muted) {
+      play('bgm', { fadeInMs: 800 });
+    }
+    return () => stop('bgm', { fadeMs: 400 });
+  }, [muted, play, stop]);
 
   useEffect(() => {
     try {
@@ -330,11 +338,12 @@ export default function EnigmaLobbyView() {
                 <button
                   type="button"
                   onClick={handleCreateRoom}
-                  className="lobby-primary-button wide"
+                  className="lobby-primary-button wide p-3 touch-manipulation"
                   suppressHydrationWarning
                 >
                   {roomAccess === 'public' ? 'Buat Public Room' : 'Buat Private Room'}
                 </button>
+
               </div>
             ) : (
               <div className="lobby-code-panel">
@@ -345,13 +354,18 @@ export default function EnigmaLobbyView() {
                     value={roomCode}
                     onChange={(event) => setRoomCode(event.target.value.toUpperCase())}
                     placeholder="PUB-104"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck="false"
+                    className="text-[16px]"
                     suppressHydrationWarning
                   />
                 </label>
                 <button
                   type="button"
                   onClick={handleJoinByCode}
-                  className="lobby-primary-button wide"
+                  className="lobby-primary-button wide p-3 touch-manipulation"
                   disabled={!roomCode.trim()}
                   suppressHydrationWarning
                 >
@@ -365,6 +379,10 @@ export default function EnigmaLobbyView() {
           </div>
         ) : null}
       </section>
+    </EnigmaFrame>
+  );
+}
+     </section>
     </EnigmaFrame>
   );
 }
