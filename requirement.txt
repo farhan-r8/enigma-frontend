@@ -1,0 +1,142 @@
+Saran Perbaikan UI/UX Enigma Protocol
+
+Tujuan utama:
+- Membuat tampilan lebih ringkas, fokus ke aksi utama, dan mudah dipahami pemain dalam 3-5 detik.
+- Mengurangi istilah dekoratif yang tidak membantu pemain mengambil keputusan.
+- Mempertahankan alur sistem saat ini: Landing -> Lobby -> Room/Briefing -> Gameplay -> End Challenge -> Post Match -> Leaderboard/Profile.
+- Perubahan UI sebaiknya tidak mengubah logic gameplay, room, scoring, storage, atau realtime.
+
+Kondisi UI saat ini:
+- Tema visual sudah kuat: dark intelligence dashboard, glass panel, neon cyan/magenta/amber, animasi typing, audio feedback, dan progress bar.
+- Banyak layar masih terlalu ramai karena ada beberapa status, label, dan panel yang menjelaskan hal mirip.
+- Beberapa teks masih memberi kesan dummy/offline walaupun frontend sudah memanggil backend di port 4000.
+- Ada istilah teknis/dekoratif seperti "MISSION FEED", "ROOM DOSSIER", "ALGORITHM RULES", "DECRYPTION FLOW", "Security Attempt", "Channel Live", dan "Offline Dummy" yang bisa disederhanakan.
+- Ada karakter mojibake pada beberapa teks render, misalnya bullet yang tampil rusak. Ganti dengan pemisah ASCII seperti "-".
+
+Prinsip desain:
+- Satu layar harus punya satu aksi utama yang paling jelas.
+- Status penting harus langsung terbaca: backend tersambung/tidak, menunggu pemain, countdown, match berjalan, menang/kalah, error input.
+- Info sekunder boleh ada, tetapi jangan bersaing dengan timer, kata aktif, input typing, dan progress.
+- Hindari teks berulang dalam satu layar.
+- Label harus menjelaskan fungsi, bukan hanya memperkuat tema.
+- Gunakan empty state yang jujur ketika data belum tersedia.
+
+Prioritas 1 - Landing Page:
+- Pertahankan fokus ke nama agent dan tombol masuk.
+- Ubah tombol "Main" menjadi "Masuk Lobby" agar tujuan lebih jelas.
+- Visual profile radar/globe/signal sudah menarik, tetapi karena tidak memengaruhi gameplay, tampilkan sebagai opsi kecil atau beri label "Visual profil".
+- Error sudah baik, tetapi bisa dibuat lebih pendek:
+  - "Nama agent wajib diisi."
+  - "Isi nama tanpa kata Agent/Agen."
+  - "Server tidak merespons. Jalankan backend lalu coba lagi."
+- Subtitle "Secure Decryption & Transmission Simulation" boleh diganti ke bahasa Indonesia agar konsisten.
+
+Prioritas 2 - Lobby:
+- Ganti status "Offline" dan "Offline Dummy" dengan status koneksi yang sesuai:
+  - "Backend tersambung" jika request health/public rooms berhasil.
+  - "Backend tidak tersambung" jika request gagal.
+- Ringkas tiga kartu summary. Saat ini "SERVER Offline", "ROOM", dan "MULAI" membuat layar terasa repetitif.
+- Layout utama sudah tepat: panel kiri untuk buat/join room, panel kanan untuk room public.
+- Sederhanakan copy mode lawan:
+  - "Training AI" = main melawan bot lokal.
+  - "Local Network" = main bersama pemain lain lewat room.
+- Ganti teks "Sinkronisasi 2 tab via BroadcastChannel" karena implementasi sekarang memakai WebSocket/backend.
+- Hapus atau ubah "Dummy room sync aktif untuk simulasi lokal" menjadi banner yang jujur:
+  - "Jalankan backend untuk membuat dan join room."
+- Room card cukup tampilkan:
+  - Room ID
+  - Host
+  - Mode
+  - Pemain 1/5
+  - Tombol Join
+- Tambahkan disabled state pada "Gabung" jika kode room kosong.
+
+Prioritas 3 - Room / Briefing:
+- Fokuskan briefing pada persiapan match:
+  - Room ID dan tombol copy.
+  - Nama pemain dan role.
+  - Mode lawan.
+  - Status lawan atau countdown.
+  - Tombol Start/Waiting.
+- Jika mode Training AI, jangan tampilkan pesan "Waiting for Player 2".
+- Jika mode Local Network, tampilkan pesan jelas "Menunggu pemain kedua".
+- Tombol "Kembali ke Lobby" sebaiknya tidak terlalu dominan sebelum match mulai dan disembunyikan/dikonfirmasi saat match berjalan.
+- Daftar "Stage 1" sampai "Stage 5" cukup dijadikan ringkasan kecil, bukan elemen utama.
+
+Prioritas 4 - Gameplay:
+- Fokus utama harus berurutan:
+  1. Timer
+  2. Stage saat ini
+  3. Kata aktif/stream kata
+  4. Input typing
+  5. Progress pemain dan lawan
+- Hapus atau sembunyikan teks yang terlalu teknis ketika pemain sedang mengetik:
+  - "MISSION FEED"
+  - "DECRYPTION FLOW"
+  - "Word status"
+  - "Recovered key" sebelum relevan
+  - "Queue"
+  - "ALGORITHM RULES"
+- "Target" tetap berguna karena membantu pemain tahu kata aktif.
+- "Word status" sebaiknya diganti indikator visual:
+  - Normal saat input benar sebagian.
+  - Hijau saat kata siap submit.
+  - Merah saat input salah.
+- "Completed Translation" sebaiknya collapsible atau hanya tampil setelah stage selesai agar tidak mengganggu input.
+- Progress stage cukup tampil sebagai "Stage 1/5".
+- Timer bahaya cukup memakai warna merah dan animasi ringan.
+- Panel kanan dapat diringkas menjadi dua area saja:
+  - Pemain dan progress.
+  - Status sistem singkat.
+
+Prioritas 5 - End Challenge:
+- Instruksi dibuat bertahap:
+  1. Masukkan Decryption Key.
+  2. Jika benar, baca master file.
+  3. Masukkan Target IP.
+  4. Submit.
+- Ganti "Security Attempt 1/2/3" menjadi "Percobaan tersisa: 3".
+- Tampilkan error spesifik:
+  - "Password salah."
+  - "Format IP tidak valid."
+  - "IP valid, tetapi bukan target."
+- Master file boleh tetap memakai efek reveal, tetapi pastikan teks tetap mudah dibaca dan tidak terlalu panjang di mobile.
+
+Prioritas 6 - Post Match:
+- Ringkasan hasil harus paling menonjol:
+  - Menang/Kalah
+  - Score
+  - WPM
+  - Lawan
+  - Tombol kembali ke lobby
+- "All-Time Best Record" sebaiknya diberi label "Contoh record" jika bukan data backend.
+- Jangan campur hasil match aktual dengan record dummy tanpa pembeda yang jelas.
+
+Prioritas 7 - Leaderboard:
+- Jika data kosong, tampilkan empty state:
+  - "Belum ada match tersimpan."
+- Status "Server Sync" hanya tampil jika fetch leaderboard berhasil.
+- Tabel sudah sesuai, tetapi nama kolom "Ops" bisa diganti menjadi "Operation" agar lebih jelas.
+
+Prioritas 8 - Profile:
+- Fokus ke data yang benar-benar berguna:
+  - Nama agent
+  - Total score
+  - Mission win
+  - Peak WPM
+  - Riwayat match
+- Hapus label "Field Analyst", "Offline Dummy", dan "Clearance" jika tidak punya fungsi nyata.
+- Empty state riwayat sebaiknya memakai bahasa Indonesia:
+  - "Belum ada riwayat operasi."
+
+Prioritas 9 - Audio dan Status Global:
+- Tombol audio floating sudah baik. Cukup tampilkan ikon mute/unmute.
+- Hindari status audio berulang di banyak tempat.
+- Jika backend gagal, tampilkan satu banner global:
+  - "Backend tidak tersambung. Jalankan server di port 4000 untuk bermain online."
+
+Catatan implementasi:
+- Perbaikan paling cepat adalah copywriting dan visibility, bukan refactor logic.
+- Mulai dari Lobby dan Room karena dua layar ini menentukan apakah pemain paham cara memulai.
+- Setelah itu sederhanakan Gameplay agar input typing menjadi pusat perhatian.
+- Pastikan semua teks responsif di mobile dan tidak berdesakan di kartu kecil.

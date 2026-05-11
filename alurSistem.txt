@@ -1,0 +1,140 @@
+Deskripsi Sistem Enigma Protocol
+
+Enigma Protocol adalah game typing berbasis web dengan tema operasi intelijen. Pemain masuk sebagai agent, membuat atau bergabung ke room, lalu menyelesaikan misi dekripsi melalui beberapa stage typing. Setelah semua stage selesai, pemain membuka end challenge dengan memasukkan Decryption Key dan Target IP yang benar. Hasil match disimpan sebagai riwayat dan dapat muncul di leaderboard/profile.
+
+Alur Sistem Utama
+
+1. Landing / Login Agent
+- User membuka halaman utama.
+- User mengisi nama agent tanpa kata Agent/Agen.
+- Frontend membuat atau memakai session token dari sessionStorage.
+- Frontend mengirim POST /api/session/guest ke backend.
+- Backend menormalisasi nama menjadi "Agent <nama>".
+- Backend menolak nama jika sedang dipakai session aktif lain.
+- Jika berhasil, frontend menyimpan identitas ke localStorage.
+- User diarahkan ke /enigma-protocol/lobby.
+
+2. Lobby
+- Frontend memuat daftar room public melalui GET /api/rooms/public.
+- Frontend membuka WebSocket lobby agar menerima event rooms_updated.
+- User dapat memilih:
+  - Access: Public atau Private.
+  - Mode lawan: Training AI atau Local Network.
+  - Target operasi: SANDI, VIRUS, AGENT, atau random.
+- Jika user membuat room:
+  - Frontend mengirim POST /api/rooms.
+  - Backend membuat room ID PUB-xxx atau PVT-xxx.
+  - Backend menyimpan room di memory.
+  - Frontend membuka WebSocket room.
+  - User diarahkan ke halaman room sebagai host.
+- Jika user join room:
+  - Frontend mengirim POST /api/rooms/:roomId/join.
+  - Backend menambah player jika room belum penuh dan belum mulai.
+  - Backend broadcast player_joined dan room_state_update.
+  - User diarahkan ke halaman room sebagai guest.
+
+3. Room / Briefing
+- Frontend mengambil snapshot room melalui GET /api/rooms/:roomId.
+- Frontend subscribe ke update room dan event realtime.
+- Room menampilkan Room ID, agent, role, mode lawan, pemain, status rival, dan countdown.
+- Training AI bisa dimulai oleh host tanpa pemain kedua.
+- Local Network membutuhkan minimal dua pemain.
+- Backend dapat memulai countdown otomatis ketika syarat start terpenuhi.
+- Host dapat menekan start. Frontend mengirim POST /api/rooms/:roomId/start.
+- Backend mengisi startedAt, broadcast start_match dan room_state_update.
+- Frontend menjalankan startOperation dan masuk ke gameplay.
+
+4. Gameplay Typing
+- useStageTypingEngine memilih operasi berdasarkan operationId room.
+- Tiap operasi memiliki 5 stage.
+- Tiap stage berisi paragraf bahasa Inggris, hasil terjemahan, dan satu anomaly key.
+- Pemain mengetik kata aktif secara case-sensitive.
+- Input benar sebagian ditandai sebagai typing.
+- Input tepat penuh ditandai ready.
+- Pemain menekan spasi untuk submit kata.
+- Kata yang selesai diganti menjadi kata terjemahan.
+- Jika kata mengandung anomaly key, key dikumpulkan.
+- Setelah semua kata dalam stage selesai, engine lanjut ke stage berikutnya.
+- Timer per stage berjalan 70 detik.
+- Jika timer habis, stage dianggap gagal dan sistem lanjut ke stage berikutnya.
+- Progress pemain dihitung dari stage selesai dan progress kata aktif.
+- Jika ada lawan realtime, progress dikirim melalui WebSocket progress_update.
+- Jika tidak ada lawan realtime, sistem menjalankan progress Training AI lokal.
+
+5. End Challenge
+- Setelah 5 stage selesai, gameMode berubah menjadi end-challenge.
+- Pemain mendapat 50 detik bonus phase.
+- Pemain memasukkan Decryption Key.
+- Expected password berasal dari gabungan anomaly key tiap stage.
+- Jika password salah, percobaan berkurang.
+- Jika percobaan habis, engine hard reset ke Stage 1.
+- Jika password benar, master file terbuka.
+- Pemain membaca master file untuk menemukan target IP.
+- Pemain memasukkan Target IP.
+- Jika format IP salah, sistem memberi error format.
+- Jika IP valid tetapi bukan target, sistem memberi status belum cocok.
+- Jika IP cocok, winState aktif dan match difinalisasi sebagai sukses.
+
+6. Match Over / Post Match
+- Sistem menghitung score berdasarkan jumlah kata selesai, bonus waktu, dan status sukses.
+- WPM dihitung dari total kata selesai dibagi durasi match.
+- Accuracy dihitung dari completed words dibanding typo count.
+- Jika lawan Training AI mencapai progress 100 lebih dulu, pemain kalah.
+- Jika bonus timer habis, pemain kalah.
+- Jika match selesai, frontend membuat localSummary dan rivalSummary.
+- Untuk match realtime, frontend mengirim event match_over ke room.
+- Frontend menampilkan post-match berisi hasil, score, WPM, pemenang, dan ranking ringkas.
+- Frontend menyimpan hasil melalui POST /api/matches.
+- Jika backend gagal, frontend tetap menyimpan fallback ke localStorage.
+
+7. Leaderboard
+- Halaman leaderboard memanggil GET /api/leaderboard.
+- Backend membaca daftar matches, mengurutkan berdasarkan score, dan mengembalikan rank.
+- Frontend menampilkan top score, peak WPM, total agent, dan tabel ranking.
+
+8. Profile
+- Halaman profile membaca identitas lokal dan riwayat match lokal.
+- Frontend mencoba mengambil GET /api/profile/me dari backend.
+- Jika backend mengembalikan profil, data backend dipakai untuk nama agent dan recent operations.
+- Statistik yang ditampilkan:
+  - Total score.
+  - Mission win.
+  - Peak WPM.
+  - Recent operations.
+
+9. Leave, Disconnect, dan Cleanup Room
+- Jika pemain keluar sebelum match, frontend memanggil POST /api/rooms/:roomId/leave.
+- Jika host keluar, backend menutup room.
+- Jika guest keluar, backend menghapus player dari room.
+- Jika match sudah berjalan dan jumlah pemain tersisa tidak memenuhi aturan, backend broadcast match_forfeit dan menutup room.
+- Room idle sebelum mulai akan dihapus otomatis setelah TTL.
+- Session tidak aktif akan dibersihkan setelah TTL.
+
+10. Audio
+- AudioProvider aktif di root layout.
+- Tombol audio floating dapat mute/unmute semua audio.
+- Efek suara dipanggil saat click, typing, word selesai, stage selesai, timeout, password salah, unlock master file, mission success, dan transisi backsound gameplay.
+- Jika aset audio gagal diputar, provider mencoba fallback synth sederhana lewat Web Audio API.
+
+Ringkasan Alur Data
+
+- Identitas agent:
+  User input -> POST /api/session/guest -> localStorage identity -> dipakai di lobby/profile/match.
+
+- Room:
+  Lobby create/join -> backend rooms Map -> snapshot room -> WebSocket room_state_update -> UI room/game.
+
+- Gameplay:
+  stage-typing-data -> useStageTypingEngine -> EnigmaProtocolGame -> progress local/realtime -> end challenge -> post match.
+
+- Match record:
+  finalizeMatch -> saveMatchRecord -> POST /api/matches -> backend matches.json -> leaderboard/profile.
+
+- Realtime:
+  WebSocket connect -> rooms_updated / room_state_update / start_match / progress_update / match_over / leave/disconnect events -> update UI.
+
+Catatan Sistem:
+- Frontend membutuhkan backend aktif di http://localhost:4000 jika NEXT_PUBLIC_API_BASE_URL tidak disetel.
+- Backend menyimpan room di memory, sehingga room hilang jika server restart.
+- Users dan matches disimpan ke file JSON.
+- Sebagian label UI masih menyebut dummy/offline dan perlu disesuaikan dengan integrasi backend yang sudah ada.
