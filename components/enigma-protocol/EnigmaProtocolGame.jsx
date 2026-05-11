@@ -1181,7 +1181,8 @@ export default function EnigmaProtocolGame() {
   }
 
   return (
-    <EnigmaFrame hideNav className="room-game h-[100dvh] flex flex-col overflow-hidden">
+    
+<EnigmaFrame hideNav className="room-game min-h-[100dvh] flex flex-col">
       {!briefingAccepted ? (
         <>
           <section className="hero-shell room-header">

@@ -38,7 +38,6 @@ body {
     radial-gradient(circle at 88% 18%, rgba(240, 141, 255, 0.08), transparent 28%),
     linear-gradient(180deg, #061223 0%, #090a16 52%, #120a1c 100%);
   color: var(--text-main);
-  overflow-x: hidden;
 }
 
 /* Tailwind Utility Classes Simulation */
